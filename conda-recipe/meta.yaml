@@ -14,12 +14,13 @@ requirements:
     - python=3
     - numpy
     - tqdm
+    - scipy
     - rdkit
     - openbabel
 
 test:
   imports:
-    - autoENRICH
+    - autoenrich
   commands:
     - autoenrich -h
     - impression -h

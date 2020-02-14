@@ -14,7 +14,7 @@
 #You should have received a copy of the GNU Affero General Public License
 #along with autoENRICH.  If not, see <https://www.gnu.org/licenses/>.
 
-from autoENRICH.util.flag_handler.hdl_targetflag import target_to_flag
+from autoenrich.util.flag_handler.hdl_targetflag import target_to_flag
 import numpy as np
 
 # Attempts to determine if the molecules are the same molecule

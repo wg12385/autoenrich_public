@@ -16,7 +16,7 @@
 
 
 from .nmrmol import nmrmol
-from autoENRICH.util.file_gettype import get_type
+from autoenrich.util.file_gettype import get_type
 import numpy as np
 np.set_printoptions(threshold=99999999999)
 
@@ -73,11 +73,11 @@ class dataset(object):
 		self.params = params
 
 		if featureflag in ['aSLATM', 'CMAT', 'FCHL', 'ACSF']:
-			from autoENRICH.ml.features import QML_features
+			from autoenrich.ml.features import QML_features
 		elif featureflag in ['BCAI']:
-			from autoENRICH.ml.features import TFM_features
+			from autoenrich.ml.features import TFM_features
 		elif featureflag in ['dummy']:
-			from autoENRICH.ml.features import GNR_features
+			from autoenrich.ml.features import GNR_features
 
 		if featureflag == 'dummy':
 			for mol in self.mols:

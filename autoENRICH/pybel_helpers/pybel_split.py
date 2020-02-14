@@ -16,7 +16,7 @@
 
 import numpy as np
 import openbabel
-from autoENRICH.reference.periodic_table import Get_periodic_table
+from autoenrich.reference.periodic_table import Get_periodic_table
 
 def mol_iswhole(mol):
 	iswhole = True

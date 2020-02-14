@@ -15,7 +15,7 @@
 #along with autoENRICH.  If not, see <https://www.gnu.org/licenses/>.
 
 # make orca submission files
-from autoENRICH.reference.periodic_table import Get_periodic_table
+from autoenrich.reference.periodic_table import Get_periodic_table
 
 #
 def make_optin(prefs, molname, xyz, types, path=''):

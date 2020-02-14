@@ -69,13 +69,13 @@ def HPS_iteration(iter, dataset, args, next_point_to_probe={}, BEST_SCORE=100000
 	# yes i know this is super bad "practice"
 	# if you can think of a better way of allowing QML code to not be screwed up by TF or PyTorch, etc then let me know
 	if args['modelflag'] == 'KRR':
-		from autoENRICH.ml.models import KRRmodel
+		from autoenrich.ml.models import KRRmodel
 		model = KRRmodel.KRRmodel(id, dataset.x, dataset.y, params=next_point_to_probe, model_args=args)
 	elif args['modelflag'] == 'FCHL':
-		from autoENRICH.ml.models import FCHLmodel
+		from autoenrich.ml.models import FCHLmodel
 		model = FCHLmodel.FCHLmodel(id, dataset.x, dataset.y, params=next_point_to_probe, model_args=args)
 	elif args['modelflag'] == 'NN':
-		from autoENRICH.ml.models import NNmodel
+		from autoenrich.ml.models import NNmodel
 		model = NNmodel.NNmodel(id, dataset.x, dataset.y, params=next_point_to_probe, model_args=args)
 
 	if args['cv_steps'] == 1:
@@ -121,13 +121,13 @@ def save_models(dataset, BEST_PARAMS, args):
 
 	# create model
 	if args['modelflag'] == 'KRR':
-		from autoENRICH.ml.models import KRRmodel
+		from autoenrich.ml.models import KRRmodel
 		model = KRRmodel.KRRmodel(id, np.asarray(dataset.x), np.asarray(dataset.y), params=BEST_PARAMS, model_args=args)
 	elif args['modelflag'] == 'FCHL':
-		from autoENRICH.ml.models import FCHLmodel
+		from autoenrich.ml.models import FCHLmodel
 		model = FCHLmodel.FCHLmodel(id, np.asarray(dataset.x), np.asarray(dataset.y), params=BEST_PARAMS, model_args=args)
 	elif args['modelflag'] == 'NN':
-		from autoENRICH.ml.models import NNmodel
+		from autoenrich.ml.models import NNmodel
 		model = NNmodel.NNmodel(id, dataset.x, dataset.y, params=BEST_PARAMS, model_args=args)
 
 	model.train()

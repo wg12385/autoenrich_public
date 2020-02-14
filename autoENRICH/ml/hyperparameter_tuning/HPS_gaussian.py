@@ -26,7 +26,7 @@ import numpy as np
 
 import copy
 
-from autoENRICH.ml.hyperparameter_tuning import HPS_generic as generic
+from autoenrich.ml.hyperparameter_tuning import HPS_generic as generic
 
 # Load iterations from previous run
 def load_logs(args):

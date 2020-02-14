@@ -49,7 +49,7 @@ from . import util
 
 __author__ = "Will Gerrard"
 __copyright__ = "Copyright 2020"
-__credits__ = ["Will Gerrard (2020) https://github.com/wg12385/autoENRICH"]
+__credits__ = ["Will Gerrard (2020) https://github.com/wg12385/autoenrich_public"]
 __licence__ = "GNU APGL v3+"
 __version__ = "0.0.1"
 __maintainer__ = "Will Gerrard"

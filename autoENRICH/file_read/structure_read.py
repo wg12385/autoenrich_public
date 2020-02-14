@@ -15,7 +15,7 @@
 #along with autoENRICH.  If not, see <https://www.gnu.org/licenses/>.
 
 import pybel as pyb
-from autoENRICH.pybel_helpers import pybel_bonds, pybel_read
+from autoenrich.pybel_helpers import pybel_bonds, pybel_read
 import numpy as np
 
 # Read structure from file using pybel
