@@ -30,7 +30,7 @@ Provides
 	9. pybel_helpers
 	10. reference
 	11. top_level (command modules)
-	12. util
+	12. util 
 
 """
 
