@@ -35,8 +35,6 @@ script:
   - impression -h
   - ae_utils -h
 
-
-
 after_success:
   # Install the command line API for CONDA uploads
   - conda install anaconda-client
