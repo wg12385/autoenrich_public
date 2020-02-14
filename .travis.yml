@@ -20,7 +20,9 @@ install:
   # both the commands add and append. The only difference is that
   # the add command places the channel at the front of the priority
   # list, while append does the opposite.
-  - conda config --add channels conda-forge rdkit openbabel
+  - conda config --add channels conda-forge
+  - conda config --add channels rdkit
+  - conda config --add channels openbabel
 
   # Build the conda recipe for this package
   - conda build -q conda-recipe --python=$TRAVIS_PYTHON_VERSION --output-folder bld-dir
