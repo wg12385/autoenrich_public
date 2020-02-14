@@ -10,11 +10,12 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b
   - export PATH=/home/travis/miniconda/bin:$PATH
+  # For some reason miniconda installs here instead of the above path
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda  # Update CONDA without command line prompt
 
 install:
-  - conda install conda-build
+  - conda install -y conda-build
   # You can add any CONDA channels you may need here. CONDA supports
   # both the commands add and append. The only difference is that
   # the add command places the channel at the front of the priority
@@ -38,7 +39,7 @@ script:
 
 after_success:
   # Install the command line API for CONDA uploads
-  - conda install anaconda-client
+  - conda install -y anaconda-client
   - |
     # Only upload builds from tags
     if [[ $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == "wg12385/autoenrich_public"
