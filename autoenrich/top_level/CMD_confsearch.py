@@ -15,7 +15,7 @@
 #along with autoenrich.  If not, see <https://www.gnu.org/licenses/>.
 
 from autoenrich.file_creation.structure_formats import xyz
-from autoenrichautoenrich.file_creation import confsearch
+from autoenrich.file_creation import confsearch
 from autoenrich.file_creation import HPC_submission as HPCsub
 import pybel as pyb
 
