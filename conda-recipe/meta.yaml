@@ -4,7 +4,6 @@ package:
 
 source:
   git_url: https://github.com/wg12385/autoenrich_public
-  git_tag: "2.1.2"
 
 requirements:
   host:
