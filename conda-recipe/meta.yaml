@@ -1,0 +1,40 @@
+package:
+  name: "autoenrich"
+  version: "2.1.2"
+
+source:
+  git_url: https://github.com/wg12385/autoenrich_public
+  git_tag: "2.1.2"
+
+requirements:
+  host:
+    - pip
+    - python
+    - setuptools
+  run:
+    - python=3
+    - numpy
+    - tqdm
+    - rdkit
+    - openbabel
+
+test:
+  imports:
+    - autoENRICH
+  commands:
+    - autoenrich -h
+    - impression -h
+    - ae_utils -h
+
+about:
+  home: https://github.com/wg12385/autoenrich_public
+  license: GNU Affero General Public v3 or later (AGPLv3+)
+  license_family: AGPL
+  license_file:
+  summary: Computational NMR Library
+  doc_url: www.autoenrich.co.uk
+  dev_url:
+
+extra:
+  recipe-maintainers:
+    - wg12385
