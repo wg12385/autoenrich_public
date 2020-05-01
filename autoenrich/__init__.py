@@ -30,7 +30,7 @@ Provides
 	9. pybel_helpers
 	10. reference
 	11. top_level (command modules)
-	12. util 
+	12. util
 
 """
 
@@ -49,9 +49,9 @@ from . import util
 
 __author__ = "Will Gerrard"
 __copyright__ = "Copyright 2020"
-__credits__ = ["Will Gerrard (2020) https://github.com/wg12385/autoenrich_public"]
+__credits__ = ["Will Gerrard (2020) https://github.com/wg12385/autoenrich"]
 __licence__ = "GNU APGL v3+"
-__version__ = "2.1.4"
+__version__ = "0.0.1"
 __maintainer__ = "Will Gerrard"
 __email__ = "will.gerrard@bristol.ac.uk"
 __status__ = "Beta"

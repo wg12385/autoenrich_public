@@ -1,9 +1,9 @@
 package:
   name: "autoenrich"
-  version: "2.1.4"
+  version: "2.2.0"
 
 source:
-  git_url: https://github.com/wg12385/autoenrich_public
+  git_url: https://github.com/wg12385/auto-ENRICH
   git_ref: master
 
 build:
@@ -20,6 +20,7 @@ requirements:
     - python=3
     - numpy
     - tqdm
+    - pytorch
     - scipy
     - rdkit
     - openbabel
@@ -33,7 +34,7 @@ test:
     - ae_utils -h
 
 about:
-  home: https://github.com/wg12385/autoenrich_public
+  home: https://github.com/wg12385/auto-ENRICH
   license: GNU Affero General Public v3 or later (AGPLv3+)
   license_family: AGPL
   license_file: LICENSE

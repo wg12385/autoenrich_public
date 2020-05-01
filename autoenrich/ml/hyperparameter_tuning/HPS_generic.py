@@ -17,6 +17,7 @@
 from sklearn.model_selection import KFold
 import pickle
 import numpy as np
+import gzip
 import copy
 import time
 
@@ -53,17 +54,16 @@ def HPS_iteration(iter, dataset, args, next_point_to_probe={}, BEST_SCORE=100000
 	time0 = time.time()
 
 	args['max_size'] = 200
-	if args['featureflag'] == 'BCAI' and iter == 0:
-		print('Making representations')
-		dataset.get_features_frommols(args, params=next_point_to_probe)
-	elif args['featureflag'] != 'BCAI' and args['feature_optimisation'] == 'True':
+	args['load_dataset'] = 'false'
+
+	if args['featureflag'] != 'BCAI' and args['feature_optimisation'] == 'True':
 		dataset.get_features_frommols(args, params=next_point_to_probe)
 
-	print('Number of molecules in training set: ', len(dataset.mols))
-	print('Number of envs in training set: ', len(dataset.r))
+		print('Number of molecules in training set: ', len(dataset.mols))
+		print('Number of envs in training set: ', len(dataset.r))
 
-	assert len(dataset.x) > 0
-	assert len(dataset.y) > 0
+		assert len(dataset.x) > 0
+		assert len(dataset.y) > 0
 
 	# create model
 	# yes i know this is super bad "practice"
@@ -77,17 +77,16 @@ def HPS_iteration(iter, dataset, args, next_point_to_probe={}, BEST_SCORE=100000
 	elif args['modelflag'] == 'NN':
 		from autoenrich.ml.models import NNmodel
 		model = NNmodel.NNmodel(id, dataset.x, dataset.y, params=next_point_to_probe, model_args=args)
+	elif args['modelflag'] == 'TFM':
+		from autoenrich.ml.models import TFMmodel
+		id = 'TFM_model'
+		model = TFMmodel.TFMmodel(dataset.mol_order, id, dataset.x, dataset.y, dataset.r, params=next_point_to_probe, model_args=args)
 
-	if args['cv_steps'] == 1:
+	if args['modelflag'] == 'TFM':
 		score = model.cv_predict(args['cv_steps'])
 	else:
 		y_pred = model.cv_predict(args['cv_steps'])
 		score = np.mean(np.absolute(y_pred - dataset.y))
-
-	if args['cv_steps'] != 1:
-		score = np.mean(np.absolute(y_pred - dataset.y))
-	else:
-		score = y_pred
 
 	if score > 99999.99 or np.isnan(score):
 		score = 99999.99
@@ -108,6 +107,8 @@ def HPS_iteration(iter, dataset, args, next_point_to_probe={}, BEST_SCORE=100000
 	if score < BEST_SCORE:
 		BEST_SCORE = score
 		BEST_PARAMS = next_point_to_probe
+		outname = args['output_dir'] +  args['modelflag'] + '_' + args['targetflag'] + '_' + args['featureflag'] + '_' + args['searchflag'] + '_model.pkl'
+		pickle.dump(model, open(outname, "wb"))
 		print('BEST_SCORE = ', score)
 	else:
 		print('score = ', score)
@@ -129,6 +130,9 @@ def save_models(dataset, BEST_PARAMS, args):
 	elif args['modelflag'] == 'NN':
 		from autoenrich.ml.models import NNmodel
 		model = NNmodel.NNmodel(id, dataset.x, dataset.y, params=BEST_PARAMS, model_args=args)
+	elif args['modelflag'] == 'TFM':
+		from autoenrich.ml.models import TFMmodel
+		model = TFMmodel.TFMmodel(id, dataset.x, dataset.y, dataset.r, params=BEST_PARAMS, model_args=args)
 
 	model.train()
 
@@ -136,21 +140,45 @@ def save_models(dataset, BEST_PARAMS, args):
 
 	pickle.dump(model, open(outname, "wb"))
 
-	kf = KFold(n_splits=args['cv_steps'])
-	kf.get_n_splits(dataset.x)
+	if args['modelflag'] != 'TFM':
+		kf = KFold(n_splits=args['cv_steps'])
+		kf.get_n_splits(dataset.x)
 
-	i = 0
-	for train_index, _ in kf.split(dataset.x):
-		i += 1
+		i = 0
+		for train_index, _ in kf.split(dataset.x):
+			i += 1
 
-		tmp_model = copy.deepcopy(model)
+			tmp_model = copy.deepcopy(model)
 
-		tmp_dataset.x = np.asarray(dataset.x)[train_index]
-		tmp_model.train_y = np.asarray(model.train_y)[train_index]
-		tmp_model.train()
+			tmp_dataset.x = np.asarray(dataset.x)[train_index]
+			tmp_model.train_y = np.asarray(model.train_y)[train_index]
+			tmp_model.train()
 
-		outfile = args['output_dir'] + outname.split('/')[-1].split('.')[0] + '_' + str(i) + '.pkl'
-		pickle.dump(tmp_model, open(outfile, "wb"))
+			outfile = args['output_dir'] + outname.split('/')[-1].split('.')[0] + '_' + str(i) + '.pkl'
+			pickle.dump(tmp_model, open(outfile, "wb"))
+
+	else:
+		import torch
+		molnames = list(set([dataset.r[i][0] for i in range(len(dataset.r))]))
+
+		kf = KFold(n_splits=args['cv_steps'])
+		kf.get_n_splits(dataset.x)
+
+		i = 0
+		for train_index, _ in kf.split(dataset.x[0]):
+			i += 1
+			train_x_list = []
+			train_y_list = []
+			for ii in range(len(dataset.x)):
+				train_x_list.append(torch.index_select(dataset.x[ii], 0, torch.tensor(train_index)))
+			for r, ref in enumerate(dataset.r):
+				if ref[0] in [molnames[idx] for idx in train_index]:
+					train_y_list.append(dataset.y[r])
+
+			model.train(train_x=train_x_list, train_y=train_y_list)
+
+			outfile = args['output_dir'] + outname.split('/')[-1].split('.')[0] + '_' + str(i) + '.pkl'
+			pickle.dump(model, open(outfile, "wb"))
 
 	return outname
 

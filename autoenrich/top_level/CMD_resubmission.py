@@ -1,5 +1,5 @@
 # Copyright 2020 Will Gerrard
-#This file is part of autoenrichautoenrich
+#This file is part of autoenrich.
 
 #autoenrich is free software: you can redistribute it and/or modify
 #it under the terms of the GNU Affero General Public License as published by
@@ -61,9 +61,9 @@ def setup_resubmission(molecule, prefs, path=''):
 
 			strings = HPCsub.make_orca_batch_submission(prefs, in_files, start, end, ck)
 
-			if prefs['comp']['system'] == 'BC3':
+			if prefs['comp']['system'] == 'PBS':
 				filename = path + 'RESUB_' + tag + '_' + molecule.molid + '_' + str(ck) + '.qsub'
-			elif prefs['comp']['system'] == 'BC4':
+			elif prefs['comp']['system'] == 'slurm':
 				filename = path + 'RESUB_' + tag + '_' + molecule.molid + '_' + str(ck) + '.slurm'
 			elif prefs['comp']['system'] == 'localbox':
 				filename = path + 'RESUB_' + tag + '_' + molecule.molid + '_' + str(ck) + '.sh'

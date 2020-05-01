@@ -1,5 +1,5 @@
 # Copyright 2020 Will Gerrard
-#This file is part of autoenrichautoenrich
+#This file is part of autoenrich.
 
 #autoenrich is free software: you can redistribute it and/or modify
 #it under the terms of the GNU Affero General Public License as published by
