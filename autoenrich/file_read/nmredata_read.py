@@ -2,16 +2,16 @@
 #This file is part of autoenrich.
 
 #autoenrich is free software: you can redistribute it and/or modify
-#it under the terms of the GNU Affero General Public License as published by
+#it under the terms of the GNU General Public License as published by
 #the Free Software Foundation, either version 3 of the License, or
 #(at your option) any later version.
 
 #autoenrich is distributed in the hope that it will be useful,
 #but WITHOUT ANY WARRANTY; without even the implied warranty of
 #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU Affero General Public License for more details.
+#GNU General Public License for more details.
 
-#You should have received a copy of the GNU Affero General Public License
+#You should have received a copy of the GNU General Public License
 #along with autoenrich.  If not, see <https://www.gnu.org/licenses/>.
 
 
@@ -30,11 +30,26 @@ def read_nmr(file):
 	#	coupling_len, array of bond distance between atoms (2D numpy array)
 	#	coupling_var, array of coupling constant variances (used in machine learning) (2D numpy array)
 
+	atoms = 0
+	with open(file, 'r') as f:
+		for line in f:
+			if len(line.split()) == 16:
+
+				atoms += 1
+
 	with open(file, 'r') as f:
 		for line in f:
 			if 'V2000' in line or len(line.split()) == 12:
-				atoms = int(line.split()[0])
+				chkatoms = int(line.split()[0])
 
+	# check for stupid size labelling issue
+	if atoms != chkatoms:
+		for i in range(1, len(str(chkatoms))):
+			if atoms == int(str(chkatoms)[:-i]):
+				chkatoms = atoms
+				break
+
+	assert atoms == chkatoms
 	# Define empty arrays
 	shift_array = np.zeros(atoms, dtype=np.float64)
 	# Variance is used for machine learning

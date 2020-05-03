@@ -21,6 +21,7 @@ import pandas as pd
 import rdkit
 import autoenrich.ml.features.BCAI_calc.xyz2mol as x2m
 from autoenrich.reference.periodic_table import Get_periodic_table
+
 from tqdm import tqdm
 
 # Due to some compatibility issues between rdkit/pybel and torch, we have to load them as needed.
@@ -48,127 +49,6 @@ small_longtypes = {'2JHN_4.5_2_3_1.5', '3JHN_4_2_3_1', '2JHN_4_2_3_1',
 				   '1JHN_4_4_1_1', '2JHN_3_1_3_0'}
 (MAX_ATOM_COUNT,MAX_BOND_COUNT,MAX_TRIPLET_COUNT,MAX_QUAD_COUNT) = (29, 406, 54, 117)
 
-def make_atom_df(mols):
-
-	p_table = Get_periodic_table()
-
-	# construct dataframe as BCAI requires from mols
-	# atoms has: molecule_name, atom, labeled atom,
-	molecule_name = [] 	# molecule name
-	atom_index = []		# atom index
-	atom = []			# atom type (letter)
-	x = []				# x coordinate
-	y = []				# y coordinate
-	z = []				# z coordinate
-	conns = []
-
-	mol_order = []
-	m = -1
-	for molrf in tqdm(mols, desc='Constructing atom dictionary'):
-		m += 1
-		if len(mols) > 2000:
-			mol = nmrmol(molid=molrf[1])
-
-			if molrf[2] == '':
-				ftype = get_type(molrf[2])
-			else:
-				ftype = molrf[2]
-			mol.read_nmr(molrf[0], ftype)
-		else:
-			mol = molrf
-		mol_order.append(mol.molid)
-		for t, type in enumerate(mol.types):
-			molecule_name.append(mol.molid)
-			atom_index.append(t)
-			atom.append(p_table[type])
-			x.append(mol.xyz[t][0])
-			y.append(mol.xyz[t][1])
-			z.append(mol.xyz[t][2])
-			conns.append(mol.conn[t])
-
-	atoms = {	'molecule_name': molecule_name,
-				'atom_index': atom_index,
-				'atom': atom,
-				'x': x,
-				'y': y,
-				'z': z,
-				'conn': conns,
-			}
-	atoms = pd.DataFrame(atoms)
-
-	return atoms
-
-def make_bonds_df(mols):
-
-		p_table = Get_periodic_table()
-
-		# construct dataframe as BCAI requires from mols
-		# atoms has: molecule_name, atom, labeled atom,
-		id = []				# number
-		molecule_name = [] 	# molecule name
-		atom_index_0 = []	# atom index for atom 1
-		atom_index_1 = []	# atom index for atom 2
-		cpltype = []			# coupling type
-		coupling = []	# coupling value
-		r = []
-		y = []
-
-		i = -1
-		m = -1
-		for molrf in tqdm(mols, desc='Constructing bond dictionary'):
-			m += 1
-			if len(mols) > 2000:
-				mol = nmrmol(molid=molrf[1])
-
-				if molrf[2] == '':
-					ftype = get_type(molrf[2])
-				else:
-					ftype = molrf[2]
-				mol.read_nmr(molrf[0], ftype)
-			else:
-				mol = molrf
-
-			moly = []
-			molr = []
-
-			for t, type in enumerate(mol.types):
-				for t2, type2 in enumerate(mol.types):
-					if t == t2:
-						continue
-
-					TFM_flag = str(mol.coupling_len[t][t2]) + 'J' + p_table[type] + p_table[type2]
-
-					#if TFM_flag != flag and flag != 'all':
-					#	continue
-
-					i += 1
-					id.append(i)
-					molecule_name.append(mol.molid)
-					atom_index_0.append(t)
-					atom_index_1.append(t2)
-
-
-					cpltype.append(TFM_flag)
-
-					coupling.append(mol.coupling[t][t2])
-
-					moly.append(mol.coupling[t][t2])
-					molr.append([mol.molid, t, t2])
-
-			y.append(moly)
-			r.append(molr)
-
-		bonds = {	'id': id,
-					'molecule_name': molecule_name,
-					'atom_index_0': atom_index_0,
-					'atom_index_1': atom_index_1,
-					'type': cpltype,
-					'scalar_coupling_constant': coupling
-				}
-
-		bonds = pd.DataFrame(bonds)
-
-		return bonds
 
 def make_structure_dict(atoms_dataframe):
 	"""Convert from structures.csv output to a dictionary data storage.
@@ -182,9 +62,9 @@ def make_structure_dict(atoms_dataframe):
 	"""
 	atoms = atoms_dataframe.sort_values(["molecule_name", "atom_index"])  # ensure ordering is consistent
 	# Make a molecule-based dictionary of the information
-	structure_dict = collections.defaultdict(lambda: {"symbols":[],"positions":[],"conn":[]})
+	structure_dict = collections.defaultdict(lambda: {"types":[],"positions":[],"conn":[]})
 	for index,row in atoms.iterrows():
-		structure_dict[row["molecule_name"]]["symbols"].append(row["atom"])
+		structure_dict[row["molecule_name"]]["types"].append(row["typestr"])
 		structure_dict[row["molecule_name"]]["positions"].append([row["x"],row["y"],row["z"]])
 		structure_dict[row["molecule_name"]]["conn"].append(row["conn"])
 
@@ -232,10 +112,10 @@ def enhance_structure_dict(structure_dict):
 
 		# bond orders - array (N,N) of the bond order (0 for no chemical bond)
 		molecule['bond_orders'] = np.zeros((n_atom,n_atom))
-		atomicNumList = [atomic_num_dict[symbol] for symbol in molecule['symbols']]
+		atomicNumList = [atomic_num_dict[symbol] for symbol in molecule['typesstr']]
 
-		for atom0 in range(len(molecule['symbols'])):
-			for atom1 in range(len(molecule['symbols'])):
+		for atom0 in range(len(molecule['typesstr'])):
+			for atom1 in range(len(molecule['typesstr'])):
 				try:
 					molecule['bond_orders'][atom0,atom1] = conn[atom0][atom1]
 					molecule['bond_orders'][atom1,atom0] = conn[atom1][atom0]
@@ -261,20 +141,20 @@ def enhance_structure_dict(structure_dict):
 		molecule['bond_ids'] = np.hstack((molecule['top_bonds'].sum(axis=-1)[:,np.newaxis],
 										  np.sum(molecule['top_bonds']>1e-3,axis=-1)[:,np.newaxis],
 										  molecule['top_bonds'][:,:2]))
-		# long_symbols (N,) string relabel of the symbol straight from bond_ids
-		molecule['long_symbols'] = ['_'.join([
-			molecule['symbols'][i]]+[str(x) for x in molecule['bond_ids'][i]])
+		# long_types (N,) string relabel of the symbol straight from bond_ids
+		molecule['long_types'] = ['_'.join([
+			molecule['typesstr'][i]]+[str(x) for x in molecule['bond_ids'][i]])
 									for i in range(n_atom)]
-		chem_bond_atoms = [sorted([molecule['symbols'][i] for i in molecule['bond_orders'][atom_index].nonzero()[0]])
+		chem_bond_atoms = [sorted([molecule['typesstr'][i] for i in molecule['bond_orders'][atom_index].nonzero()[0]])
 						   for atom_index in range(n_atom)]
-		molecule['sublabel_atom'] = ['-'.join([molecule['long_symbols'][atom_index]]+chem_bond_atoms[atom_index])
+		molecule['sublabel_atom'] = ['-'.join([molecule['long_types'][atom_index]]+chem_bond_atoms[atom_index])
 									for atom_index in range(n_atom)]
 
 		# pybel information. I think we only end up using Gastiger charges.
 		# Each of these is (N,) arrays
 		# Convert to xyz string for pybel's I/O
 		xyz = str(n_atom)+'\n\n' + '\n'.join([ ' '.join( [
-				str(molecule['symbols'][i]),
+				str(molecule['typesstr'][i]),
 				str(molecule['positions'][i,0]),
 				str(molecule['positions'][i,1]),
 				str(molecule['positions'][i,2])] )
@@ -298,13 +178,13 @@ def enhance_atoms(atoms_dataframe,structure_dict):
 
 	"""
 	assert int(atoms_dataframe.groupby("molecule_name").count().max()[0]) <= MAX_ATOM_COUNT
-	for key in tqdm(['distances','angle', 'bond_orders', 'top_bonds', 'bond_ids', 'long_symbols','sublabel_atom',
+	for key in tqdm(['distances','angle', 'bond_orders', 'top_bonds', 'bond_ids', 'long_types', 'sublabel_atom',
 				'charges'], desc='Enhancing atoms'):
 		newkey = key if key[-1]!='s' else key[:-1]
 		atoms_dataframe[newkey] = atoms_dataframe.apply(lambda x:
 														structure_dict[x['molecule_name']][key][x['atom_index']],
 														axis=1)
-		atoms_dataframe.rename(columns={'long_symbol':'labeled_atom'},inplace=True)
+		atoms_dataframe.rename(columns={'long_type':'labeled_atom'},inplace=True)
 	return atoms_dataframe
 
 
@@ -328,13 +208,13 @@ def enhance_bonds(bond_dataframe, structure_dict, flag='3JHH'):
 			structure_dict[molecule_name]['predict'] = structure_dict[molecule_name]['bond_orders'] * 0
 		structure_dict[molecule_name]['predict'][iatom0,iatom1] = 1
 		structure_dict[molecule_name]['predict'][iatom1,iatom0] = 1
-		long_symbols = [structure_dict[molecule_name]['long_symbols'][x] for x in [iatom0,iatom1]]
+		long_types = [structure_dict[molecule_name]['long_types'][x] for x in [iatom0,iatom1]]
 
 		# labeled_type
-		if all([x[0]=='H' for x in long_symbols]):
+		if all([x[0]=='H' for x in long_types]):
 			lt = row['type']
 		else:
-			ls = [x for x in long_symbols if x[0]!='H'][0]
+			ls = [x for x in long_types if x[0]!='H'][0]
 			lt = row["type"] + ls[1:].replace('.0','')
 			if lt in classification_corrections:
 				lt = classification_corrections[lt]
@@ -344,7 +224,7 @@ def enhance_bonds(bond_dataframe, structure_dict, flag='3JHH'):
 		new_columns["labeled_type"].append(lt)
 
 		# sublabeled type
-		new_columns["sublabel_type"].append(row['type'] + '-'+ '-'.join(sorted(long_symbols)))
+		new_columns["sublabel_type"].append(row['type'] + '-'+ '-'.join(sorted(long_types)))
 		# bond order
 		new_columns["bond_order"].append(structure_dict[molecule_name]['bond_orders'][iatom0,iatom1])
 
@@ -371,8 +251,8 @@ def make_triplets(molecule_list,structure_dict):
 	for molecule_name in molecule_list:
 		molecule = structure_dict[molecule_name]
 		bond_orders = molecule['bond_orders']
-		short = molecule['symbols']
-		long = molecule['long_symbols']
+		short = molecule['typesstr']
+		long = molecule['long_types']
 		for i, atom_bond_order in enumerate(bond_orders):
 			connection_indices = atom_bond_order.nonzero()[0]
 			pairs = itertools.combinations(connection_indices,2)
@@ -430,7 +310,7 @@ def write_csv(directory,label,atoms,bonds,triplets):
 		for i in ["x","y","z"]:
 			atoms[i] = atoms[i].values.round(10)
 		renames = {k:k[:-1] for k in atoms.columns if k[-1]=='s'}
-		renames.update({'long_symbols':'labeled_atom'})
+		renames.update({'long_types':'labeled_atom'})
 		atoms = atoms.rename(columns=renames)
 		atoms.to_csv(filename.format('structures'),index=False,columns=
 			'molecule_name,atom_index,atom,x,y,z,labeled_atom,angle,top_bond_0,top_bond_1,top_bond_2,top_bond_3,sublabel_atom,charge,spin,heavyvalence,heterovalence,valence,hyb_type'.split(','))
@@ -477,7 +357,7 @@ def add_embedding(atoms,bonds,triplets,embeddings=None):
 
 	"""
 	# Add the embedding info to the dataframes.
-	atoms["type_0"] = atoms["atom"]
+	atoms["type_0"] = atoms["typestr"]
 	atoms["type_1"] = atoms["labeled_atom"].apply(lambda x : x[:5])
 	atoms["type_2"] = atoms["labeled_atom"]
 	bonds["type_0"] = bonds["type"]
@@ -487,11 +367,11 @@ def add_embedding(atoms,bonds,triplets,embeddings=None):
 	triplets["type_1"] = triplets["label"]
 	if embeddings is None:
 		embeddings = {}
-		embeddings.update({('atom',t):_create_embedding(atoms["type_" + str(t)]) for t in range(3)})
+		embeddings.update({('typestr',t):_create_embedding(atoms["type_" + str(t)]) for t in range(3)})
 		embeddings.update({('bond',t):_create_embedding(bonds["type_" + str(t)]) for t in range(3)})
 		embeddings.update({('triplet',t):_create_embedding(triplets["type_" + str(t)]) for t in range(2)})
 	for t in range(3):
-		atoms["type_index_" + str(t)] = atoms["type_" + str(t)].apply(lambda x : embeddings[('atom',t)][x])
+		atoms["type_index_" + str(t)] = atoms["type_" + str(t)].apply(lambda x : embeddings[('typestr',t)][x])
 	for t in range(3):
 		bonds["type_index_" + str(t)] = bonds["type_" + str(t)].apply(lambda x : embeddings[('bond',t)][x])
 	for t in range(2):

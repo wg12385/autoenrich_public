@@ -2,24 +2,21 @@
 #This file is part of autoenrich.
 
 #autoenrich is free software: you can redistribute it and/or modify
-#it under the terms of the GNU Affero General Public License as published by
+#it under the terms of the GNU General Public License as published by
 #the Free Software Foundation, either version 3 of the License, or
 #(at your option) any later version.
 
 #autoenrich is distributed in the hope that it will be useful,
 #but WITHOUT ANY WARRANTY; without even the implied warranty of
 #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU Affero General Public License for more details.
+#GNU General Public License for more details.
 
-#You should have received a copy of the GNU Affero General Public License
+#You should have received a copy of the GNU General Public License
 #along with autoenrich.  If not, see <https://www.gnu.org/licenses/>.
 
 import bayes_opt as bayes
 from bayes_opt import BayesianOptimization
 from bayes_opt import UtilityFunction
-from bayes_opt.observer import JSONLogger
-from bayes_opt.event import Events
-from bayes_opt.util import load_logs
 
 import pickle
 import numpy as np
@@ -27,6 +24,7 @@ import numpy as np
 import copy
 
 from autoenrich.ml.hyperparameter_tuning import HPS_generic as generic
+from tqdm import tqdm
 
 # Load iterations from previous run
 def load_logs(args):
@@ -63,7 +61,7 @@ def load_logs(args):
 	return to_load
 
 
-def gaussian_search(dataset, args):
+def gaussian_search(model, dataset, args):
 
 	# determine whether log dictionary was provided
 	if len(args['param_logs']) == 0:
@@ -110,10 +108,11 @@ def gaussian_search(dataset, args):
 	BEST_PARAMS = {}
 	searched = []
 	force_random = False
-	for e in range(int(args['epochs'])):
 
+	pbar = tqdm(range(int(args['epochs'])))
+	for e in pbar:
+		pbar.set_description("{0:<s} Gaussian Search, Best Score: {1:<.4f} ".format(args['targetflag'], BEST_SCORE))
 		if force_random or (args['random'] > 0 and e%args['random'] == 0):
-			print('RANDOM')
 			next_point_to_probe = {}
 			for param in args['param_ranges'].keys():
 				if args['param_logs'][param] == 'no':
@@ -138,7 +137,7 @@ def gaussian_search(dataset, args):
 				if 'log' in args['param_logs'][param]:
 					next_point_to_probe[param] = 10**next_point_to_probe[param]
 
-		score, BEST_SCORE, BEST_PARAMS = generic.HPS_iteration(e, dataset, args, next_point_to_probe=copy.copy(next_point_to_probe),
+		score, BEST_SCORE, BEST_PARAMS = generic.HPS_iteration(model, e, dataset, args, next_point_to_probe=copy.copy(next_point_to_probe),
 															BEST_SCORE=BEST_SCORE, BEST_PARAMS=BEST_PARAMS)
 
 		searched.append(next_point_to_probe)
@@ -152,9 +151,6 @@ def gaussian_search(dataset, args):
 			print('(forcing random point)')
 			force_random = True
 
-
-	outname = generic.save_models(dataset, BEST_PARAMS, args)
-	print('Optimised model(s) saved in ', outname)
 
 	return dataset, BEST_SCORE
 

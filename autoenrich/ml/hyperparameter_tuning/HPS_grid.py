@@ -2,16 +2,16 @@
 #This file is part of autoenrich.
 
 #autoenrich is free software: you can redistribute it and/or modify
-#it under the terms of the GNU Affero General Public License as published by
+#it under the terms of the GNU General Public License as published by
 #the Free Software Foundation, either version 3 of the License, or
 #(at your option) any later version.
 
 #autoenrich is distributed in the hope that it will be useful,
 #but WITHOUT ANY WARRANTY; without even the implied warranty of
 #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU Affero General Public License for more details.
+#GNU General Public License for more details.
 
-#You should have received a copy of the GNU Affero General Public License
+#You should have received a copy of the GNU General Public License
 #along with autoenrich.  If not, see <https://www.gnu.org/licenses/>.
 
 from . import HPS_generic as generic
@@ -20,7 +20,7 @@ import itertools
 import pickle
 import sys
 
-def grid_search(dataset, args):
+def grid_search(model, dataset, args):
 
 	# define grid
 	search_grid = {}
@@ -55,17 +55,16 @@ def grid_search(dataset, args):
 			xx += 1
 		search_list.append(param_point)
 
+	print(len(search_list))
+
 	generic.setup_logfile(args)
 
 	BEST_SCORE = 999.9999999
 	BEST_PARAMS = {}
 	for p, params in enumerate(search_list):
 
-		score, BEST_SCORE, BEST_PARAMS = generic.HPS_iteration(p, dataset, args, next_point_to_probe=params,
+		score, BEST_SCORE, BEST_PARAMS = generic.HPS_iteration(model, p, dataset, args, next_point_to_probe=params,
 															BEST_SCORE=BEST_SCORE, BEST_PARAMS=BEST_PARAMS)
-
-	outname = generic.save_models(dataset, BEST_PARAMS, args)
-	print('Optimised model saved in ', outname)
 
 	return dataset, BEST_SCORE
 

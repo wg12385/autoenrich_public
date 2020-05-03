@@ -48,7 +48,19 @@ def get_dummy_dataset(ml_size=10, at_size=10, target=[1]):
 	return dset
 
 
+def get_test_dataset(size=5):
 
+    mols = []
+    for i in range(size):
+        mol = dummymol.get_random_ethane()
+        mol.molid = 'random' + str(i)
+        #mol.get_distance_matrix(heavy_only=False)
+        mols.append(mol)
+
+    dset = dataset()
+    dset.mols = mols
+
+    return dset
 
 
 

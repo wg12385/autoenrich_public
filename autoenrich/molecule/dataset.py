@@ -2,16 +2,16 @@
 #This file is part of autoenrich.
 
 #autoenrich is free software: you can redistribute it and/or modify
-#it under the terms of the GNU Affero General Public License as published by
+#it under the terms of the GNU General Public License as published by
 #the Free Software Foundation, either version 3 of the License, or
 #(at your option) any later version.
 
 #autoenrich is distributed in the hope that it will be useful,
 #but WITHOUT ANY WARRANTY; without even the implied warranty of
 #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU Affero General Public License for more details.
+#GNU General Public License for more details.
 
-#You should have received a copy of the GNU Affero General Public License
+#You should have received a copy of the GNU General Public License
 #along with autoenrich.  If not, see <https://www.gnu.org/licenses/>.
 
 
@@ -19,11 +19,13 @@ from .nmrmol import nmrmol
 from autoenrich.util.file_gettype import get_type
 from autoenrich.util.flag_handler.hdl_targetflag import flag_to_target
 from autoenrich.util.filename_utils import get_unique_part
-from autoenrich.ml.features import GNR_features
+from autoenrich.ml.features import GNR_features as GNR
 
 from tqdm import tqdm
 import gzip
 import pickle
+
+import pandas as pd
 
 import numpy as np
 np.set_printoptions(threshold=99999999999)
@@ -33,9 +35,10 @@ class dataset(object):
 	def __init__(self):
 
 		self.mols = []
-		self.x = []
-		self.y = []
-		self.r = []
+		self.atoms = pd.DataFrame()
+		self.bonds = pd.DataFrame()
+		self.struc = pd.DataFrame()
+		self.BCAI = []
 		self.mol_order = []
 		self.big_data = False
 		self.files = []
@@ -80,95 +83,45 @@ class dataset(object):
 				self.mols.append(mol)
 
 
-	def get_features_frommols(self, args, params={}, molcheck_run=False, training=True):
-
-		featureflag = args['featureflag']
-		targetflag = args['targetflag']
-		try:
-			max = args['max_size']
-		except:
-			max = 200
-
-		for mol in self.mols:
-			if len(mol.types) > max:
-				max = len(mol.types)
-				print('WARNING, SETTING MAXIMUM MOLECULE SIZE TO, ', max)
-
-		if 'cutoff' in params:
-			if params['cutoff'] < 0.1:
-				params['cutoff'] = 0.1
-		else:
-			params['cutoff'] = 5.0
-
-		x = []
-		y = []
-		r = []
+	def get_features_frommols(self, args, params={}, molcheck_run=False, training=True, max=200):
 
 		self.params = params
 
-		target = flag_to_target(targetflag)
+		target = flag_to_target(args['targetflag'])
 		self.remove_mols(target)
 		if molcheck_run:
-			return 
+			return
 
-		if featureflag in ['aSLATM', 'CMAT', 'FCHL', 'ACSF']:
-			import qml
-		elif featureflag in ['BCAI']:
+
+		for mol in self.mols:
+			if len(mol.types) > max:
+				max = len(mol.types) + 1
+				print('WARNING, setting max atoms to ', max)
+
+		self.params['max'] = max
+
+		self.atoms = GNR.make_atom_df(self.mols)
+		self.struc = GNR.make_struc_dict(self.atoms)
+		if len(args['targetflag']) == 4:
+			self.bonds = GNR.make_bonds_df(self.mols)
+
+		if args['featureflag'] in ['aSLATM', 'CMAT', 'FCHL', 'ACSF']:
+			from autoenrich.ml.features import QML_features
+			self.atoms = QML_features.get_atomic_qml_features(self.atoms, self.bonds,
+															self.struc, featureflag=args['featureflag'],
+															cutoff=params['cutoff'], max=max)
+
+		elif args['featureflag'] == 'BCAI':
 			from autoenrich.ml.features import TFM_features
+			self.BCAI, self.atoms, self.bonds, self.struc, xfiles, rfiles, yfiles = TFM_features.get_BCAI_features(self.atoms,
+															self.bonds, self.struc, targetflag=args['targetflag'], training=training)
 
-		_, y, r = GNR_features.get_dummy_features(self.mols, targetflag)
-
-		if featureflag == 'aSLATM':
-			mbtypes = [[1],[1,1], [1,1,1], [1,1,6], [1,1,7], [1,1,8], [1,1,9], [1,6], [1,6,1], [1,6,6], [1,6,7], [1,6,8], [1,6,9], [1,7], [1,7,1], [1,7,6], [1,7,7], [1,7,8], [1,7,9], [1,8], [1,8,1], [1,8,6], [1,8,7], [1,8,8], [1,8,9], [1,9], [1,9,1], [1,9,6], [1,9,7], [1,9,8], [1,9,9], [6], [6,1], [6,1,1], [6,1,6], [6,1,7], [6,1,8], [6,1,9], [6,6], [6,6,1], [6,6,6], [6,6,7], [6,6,8], [6,6,9], [6,7], [6,7,1], [6,7,6], [6,7,7], [6,7,8], [6,7,9], [6,8], [6,8,1], [6,8,6], [6,8,7], [6,8,8], [6,8,9], [6,9], [6,9,1], [6,9,6], [6,9,7], [6,9,8], [6,9,9], [7],[7,1], [7,1,1], [7,1,6], [7,1,7], [7,1,8], [7,1,9], [7,6], [7,6,1], [7,6,6], [7,6,7], [7,6,8], [7,6,9], [7,7], [7,7,1], [7,7,6], [7,7,7], [7,7,8], [7,7,9], [7,8], [7,8,1], [7,8,6], [7,8,7], [7,8,8], [7,8,9], [7,9], [7,9,1], [7,9,6], [7,9,7], [7,9,8], [7,9,9], [8], [8,1], [8,1,1], [8,1,6], [8,1,7], [8,1,8], [8,1,9], [8,6], [8,6,1], [8,6,6], [8,6,7], [8,6,8], [8,6,9], [8,7], [8,7,1], [8,7,6], [8,7,7], [8,7,8], [8,7,9], [8,8], [8,8,1], [8,8,6], [8,8,7], [8,8,8], [8,8,9], [8,9], [8,9,1], [8,9,6], [8,9,7], [8,9,8], [8,9,9], [9], [9,1], [9,1,1], [9,1,6], [9,1,7], [9,1,8], [9,1,9], [9,6], [9,6,1], [9,6,6], [9,6,7], [9,6,8], [9,6,9], [9,7], [9,7,1], [9,7,6], [9,7,7], [9,7,8], [9,7,9], [9,8], [9,8,1], [9,8,6], [9,8,7], [9,8,8], [9,8,9], [9,9], [9,9,1], [9,9,6], [9,9,7], [9,9,8], [9,9,9]]
-			'''
-			nuclear_charges = []
-			for tmp_mol in mols:
-				nuclear_charges.append(tmp_mol.types)
-			mbtypes = qml.representations.get_slatm_mbtypes(nuclear_charges)
-			'''
-			reps = qml.representations.generate_slatm(mol.xyz, mol.types, mbtypes, rcut=cutoff)
-			x = np.asarray(reps)
-
-		elif featureflag == 'CMAT':
-			reps = qml.representations.generate_atomic_coulomb_matrix(mol.types, mol.xyz, size = max, central_cutoff = cutoff)
-			x = np.asarray(reps)
-
-		elif featureflag == 'FCHL':
-			reps = qml.fchl.generate_representation(mol.xyz, mol.types, max, cut_distance=cutoff)
-			x = np.asarray(reps)
-
-		elif featureflag == 'ACSF':
-			reps = qml.representations.generate_acsf(mol.types, mol.xyz, elements=[1, 6, 7, 8, 9, 14, 15, 16, 17, 35],
-													nRs2=int(nRs2), nRs3=int(nRs3),
-													nTs=int(nTs), eta2=eta2, eta3=eta3, zeta=zeta, rcut=cutoff, acut=acut,
-													bin_min=0.0, gradients=False)
-			x = np.asarray(reps)
-
-		elif featureflag == 'BCAI':
-
-				_x, _y, _r, mol_order = TFM_features.get_BCAI_features(self.mols, targetflag, training=training)
-
-				x.extend(_x)
-				y.extend(_y)
-				r.extend(_r)
-				batch_mols = []
+		elif args['featureflag'] != 'dummy':
+			return
 
 		else:
-			print('Feature flag not recognised, no feature flag: ', featureflag)
-
-		if featureflag == 'BCAI':
-			self.x = x
-			self.y = y
-			self.r = r
-			self.mol_order = mol_order
-		else:
-			self.x = np.asarray(x)
-			self.y = np.asarray(y)
-			self.r = r
-
-		if featureflag not in ['dummy', 'BCAI']:
-			print('Reps generated, shape: ', self.x.shape)
-
+			print('Feature flag not recognised, no feature flag: ', args['featureflag'])
+			return 0
 
 
 	def assign_from_ml(self, pred_y, var, zero=True):
@@ -217,11 +170,16 @@ class dataset(object):
 									mol.coupling[t1][t2] = pred_y[r]
 									mol.coupling_var[t1][t2] = var[r]
 
-	def remove_mols(self, target):
+	def remove_mols(self, target, progress=False):
 		## Discard useless molecules:
 		to_remove = []
-		print('Checking structures')
-		for molrf in tqdm(self.mols):
+
+		if progress:
+			pbar = tqdm(self.mols)
+		else:
+			pbar = self.mols
+
+		for molrf in pbar:
 			if self.big_data:
 				mol = nmrmol(molid=molrf[1])
 
@@ -266,6 +224,6 @@ class dataset(object):
 
 			self.mols = keep
 
-			print('REMOVED ', len(to_remove), '/', len(to_remove)+len(keep), ' molecules due to lack of features')
+			#print('REMOVED ', len(to_remove), '/', len(to_remove)+len(keep), ' molecules due to lack of features')
 			#print(to_remove[:10])
 			assert len(keep) > 1

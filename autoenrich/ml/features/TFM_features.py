@@ -2,16 +2,16 @@
 #This file is part of autoenrich.
 
 #autoenrich is free software: you can redistribute it and/or modify
-#it under the terms of the GNU Affero General Public License as published by
+#it under the terms of the GNU General Public License as published by
 #the Free Software Foundation, either version 3 of the License, or
 #(at your option) any later version.
 
 #autoenrich is distributed in the hope that it will be useful,
 #but WITHOUT ANY WARRANTY; without even the implied warranty of
 #MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU Affero General Public License for more details.
+#GNU General Public License for more details.
 
-#You should have received a copy of the GNU Affero General Public License
+#You should have received a copy of the GNU General Public License
 #along with autoenrich.  If not, see <https://www.gnu.org/licenses/>.
 
 # get features for TransForMer models
@@ -21,6 +21,8 @@ from autoenrich.molecule.nmrmol import nmrmol
 from autoenrich.util.file_gettype import get_type
 
 import autoenrich.ml.features.BCAI_calc.mol_graph_setup as BCAI
+
+from autoenrich.ml.features import GNR_features as GNR
 
 import tracemalloc
 
@@ -53,7 +55,7 @@ def get_size(obj, seen=None):
 		size += sum([get_size(i, seen) for i in obj])
 	return size
 
-def save_dataset(Dset, y, r, mol_order):
+def save_dataset(Dset):
 	p = np.random.permutation(Dset[0].shape[0])
 	idx_train = torch.cat([torch.tensor(p[:int(0.6*len(p))]), torch.tensor(p[int(0.8*len(p)):])])
 	idx_val = torch.tensor(p[int(0.6*len(p)):int(0.8*len(p))])
@@ -64,34 +66,12 @@ def save_dataset(Dset, y, r, mol_order):
 	train_file = "training_data/dataset_features_x.pkl.gz"
 	with gzip.open(train_file, "wb") as f:
 		pickle.dump(Dset, f, protocol=4)
-	x = [train_file, train_file]
+	xfiles = [train_file, train_file]
 
-	train_file = "training_data/dataset_features_r.pkl.gz"
-	with gzip.open(train_file, "wb") as f:
-		pickle.dump(r, f, protocol=4)
-	r = [train_file, train_file]
-
-	train_file = "training_data/dataset_features_y.pkl.gz"
-	with gzip.open(train_file, "wb") as f:
-		pickle.dump(y, f, protocol=4)
-	y = [train_file, train_file]
-
-	train_file = "training_data/dataset_features_m.pkl.gz"
-	with gzip.open(train_file, "wb") as f:
-		pickle.dump(mol_order, f, protocol=4)
-	mol_order = [train_file, train_file]
-
-	return x, y, r, mol_order
+	return xfiles
 
 
-def save_split_dataset(Dset, y, r, mol_order):
-
-	snapshot = tracemalloc.take_snapshot()
-	top_stats = snapshot.statistics('lineno')
-	print("12[ Top 2 ]")
-	for stat in top_stats[:2]:
-		print(stat)
-
+def save_split_dataset(Dset):
 
 	p = np.random.permutation(Dset[0].shape[0])
 	idx_train = torch.cat([torch.tensor(p[:int(0.6*len(p))]), torch.tensor(p[int(0.8*len(p)):])])
@@ -100,14 +80,13 @@ def save_split_dataset(Dset, y, r, mol_order):
 	D_train = tuple([d[idx_train] for d in Dset])
 	D_val = tuple([d[idx_val] for d in Dset])
 
-
 	train_file = "training_data/dataset_features_xtrain.pkl.gz"
 	val_file = "training_data/dataset_features_xval.pkl.gz"
 	with gzip.open(train_file, "wb") as f:
 		pickle.dump(D_train, f, protocol=4)
 	with gzip.open(val_file, "wb") as f:
 		pickle.dump(D_val, f, protocol=4)
-	x = [train_file, val_file]
+	xfiles = [train_file, val_file]
 
 	idx_train = [np.asscalar(id.numpy()) for id in idx_train]
 	idx_val = [np.asscalar(id.numpy()) for id in idx_val]
@@ -120,7 +99,7 @@ def save_split_dataset(Dset, y, r, mol_order):
 		pickle.dump(r_train, f, protocol=4)
 	with gzip.open(val_file, "wb") as f:
 		pickle.dump(r_val, f, protocol=4)
-	r = [train_file, val_file]
+	rfiles = [train_file, val_file]
 
 
 	y_train = [y[id] for id in idx_train]
@@ -131,34 +110,19 @@ def save_split_dataset(Dset, y, r, mol_order):
 		pickle.dump(y_train, f, protocol=4)
 	with gzip.open(val_file, "wb") as f:
 		pickle.dump(y_val, f, protocol=4)
-	y = [train_file, val_file]
+	yfiles = [train_file, val_file]
 
-
-	m_train = [mol_order[id] for id in idx_train]
-	m_val = [mol_order[id] for id in idx_val]
-	train_file = "training_data/dataset_features_mtrain.pkl.gz"
-	val_file = "training_data/dataset_features_mval.pkl.gz"
-	with gzip.open(train_file, "wb") as f:
-		pickle.dump(m_train, f, protocol=4)
-	with gzip.open(val_file, "wb") as f:
-		pickle.dump(m_val, f, protocol=4)
-	mol_order = [train_file, val_file]
-
-	return x, y, r, mol_order
+	return xfiles, yfiles, rfiles
 
 
 
 # make BCAI features
-def get_BCAI_features(mols, targetflag='CCS', training=True):
+def get_BCAI_features(atoms, bonds, struc, targetflag='CCS', training=True):
 
 	target = flag_to_target(targetflag)
 
-	atoms = BCAI.make_atom_df(mols)
-	structure_dict = BCAI.make_structure_dict(atoms)
 	BCAI.enhance_structure_dict(structure_dict)
 	BCAI.enhance_atoms(atoms, structure_dict)
-
-	bonds = BCAI.make_bonds_df(mols)
 	bonds = BCAI.enhance_bonds(bonds, structure_dict)
 
 	triplets = BCAI.make_triplets(bonds["molecule_name"].unique(), structure_dict)
@@ -180,11 +144,11 @@ def get_BCAI_features(mols, targetflag='CCS', training=True):
 	Dset = BCAI.create_dataset(atoms, bonds, triplets, labeled = True, max_count = 10**10, mol_order=mol_order)
 
 	if training:
-		x, y, r, mol_order = save_split_dataset(Dset, y, r, mol_order)
+		x, y, r, mol_order = save_split_dataset(Dset)
 	else:
-		x, y, r, mol_order = save_dataset(Dset, y, r, mol_order)
+		x, y, r, mol_order = save_dataset(Dset)
 
-	return x, y, r, mol_order
+	return Dset, atoms, bonds, struc, x, y, r
 
 
 

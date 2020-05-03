@@ -150,7 +150,17 @@ def get_random_mol_with_confs(size=5):
 
     return mol
 
+def get_rndethane_mols(size=5, distance=False):
 
+    mols = []
+    for i in range(size):
+        mol = get_random_ethane()
+        mol.molid = 'random' + str(i)
+        if distance:
+            mol.get_distance_matrix(heavy_only=False)
+        mols.append(mol)
+
+    return mols
 
 
 

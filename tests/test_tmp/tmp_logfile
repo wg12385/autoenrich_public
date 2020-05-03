@@ -1,0 +1,11 @@
+HPS test_search SEARCH
+KRR   CMAT   HCS
+cutoff    :          0  <--->  10        
+sigma     :         -5  <--->  -2        
+lamda     :        -10  <--->  -4        
+
+START
+i         	SCORE     	cutoff              	sigma               	lamda               	Mins      
+0         	30.63517  	5.078               	1.433e-05           	2.37e-05            	-0.0031   
+1         	0.12111   	0.05715             	0.008569            	7.89e-05            	-0.0016   
+2         	0.12111   	0.1125              	0.006365            	4.359e-05           	-0.0010   
